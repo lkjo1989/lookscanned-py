@@ -7,10 +7,11 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, Signal, QThread
-from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtGui import QColor, QImage, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
+    QColorDialog,
     QComboBox,
     QFileDialog,
     QGroupBox,
@@ -244,11 +245,13 @@ class SettingsPanel(QScrollArea):
 
         wm_color_row = QHBoxLayout()
         wm_color_row.addWidget(QLabel(tr("settings.watermark_color")))
-        self._watermark_color = QLineEdit()
-        self._watermark_color.setText("#000000")
-        self._watermark_color.setFixedWidth(80)
-        self._watermark_color.setPlaceholderText("#000000")
-        wm_color_row.addWidget(self._watermark_color)
+        self._watermark_color_btn = QPushButton()
+        self._watermark_color_btn.setFixedSize(28, 28)
+        self._watermark_color_btn.setCursor(Qt.PointingHandCursor)
+        self._watermark_color_btn.clicked.connect(self._pick_color)
+        self._watermark_color_value = "#000000"
+        self._update_color_button()
+        wm_color_row.addWidget(self._watermark_color_btn)
         wm_color_row.addStretch()
         wm_layout.addLayout(wm_color_row)
 
@@ -294,12 +297,27 @@ class SettingsPanel(QScrollArea):
         for w in (self._dpi_combo, self._fmt_combo):
             w.currentTextChanged.connect(self._notify_changed)  # type: ignore[attr-defined]
         for w in (
-            self._watermark_text, self._watermark_color,
+            self._watermark_text,
             self._meta_title, self._meta_author, self._meta_subject,
             self._meta_producer, self._meta_creator,
             self._meta_creation_date, self._meta_mod_date,
         ):
             w.textChanged.connect(self._notify_changed)  # type: ignore[attr-defined]
+
+    def _pick_color(self) -> None:
+        """Open a QColorDialog and update the watermark colour."""
+        color = QColorDialog.getColor(QColor(self._watermark_color_value), self)
+        if color.isValid():
+            self._watermark_color_value = color.name()
+            self._update_color_button()
+            self.config_changed.emit()
+
+    def _update_color_button(self) -> None:
+        """Redraw the colour button to reflect ``_watermark_color_value``."""
+        self._watermark_color_btn.setStyleSheet(
+            f"background-color: {self._watermark_color_value}; "
+            "border: 1px solid #999; border-radius: 3px;"
+        )
 
     def _notify_changed(self, *_args: object) -> None:
         """Slot that swallows widget-specific arguments and emits config_changed."""
@@ -344,7 +362,7 @@ class SettingsPanel(QScrollArea):
             watermark_y=self._watermark_y_slider.value() / 100.0,
             watermark_font_size=self._watermark_size_slider.value(),
             watermark_opacity=self._watermark_opacity_slider.value() / 100.0,
-            watermark_color=self._watermark_color.text() or "#000000",
+            watermark_color=self._watermark_color_value,
             title=self._meta_title.text(),
             author=self._meta_author.text(),
             subject=self._meta_subject.text(),
