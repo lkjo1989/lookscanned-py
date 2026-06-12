@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, Signal, QThread
@@ -270,11 +271,14 @@ class SettingsPanel(QScrollArea):
         self._meta_creator = self._add_meta_row(
             meta_layout, tr("settings.metadata.creator"), default="HP Scan"
         )
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._meta_creation_date = self._add_meta_row(
-            meta_layout, tr("settings.metadata.creation_date"), placeholder="2024-01-01T00:00:00"
+            meta_layout, tr("settings.metadata.creation_date"),
+            default=now_str, placeholder="yyyy-mm-dd HH:mm:ss",
         )
         self._meta_mod_date = self._add_meta_row(
-            meta_layout, tr("settings.metadata.mod_date"), placeholder="2024-01-01T00:00:00"
+            meta_layout, tr("settings.metadata.mod_date"),
+            default=now_str, placeholder="yyyy-mm-dd HH:mm:ss",
         )
 
         layout.addWidget(meta_grp)
@@ -343,6 +347,17 @@ class SettingsPanel(QScrollArea):
 
     # -- config builder -------------------------------------------------------
 
+    @staticmethod
+    def _parse_date(date_str: str) -> str:
+        """Convert ``yyyy-mm-dd HH:mm:ss`` to ISO 8601 for PyMuPDF metadata."""
+        if not date_str:
+            return ""
+        try:
+            dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+            return dt.isoformat()
+        except ValueError:
+            return date_str
+
     def build_config(self) -> ScanConfig:
         return ScanConfig(
             rotate=self._rotate_slider.value() / 10.0,
@@ -368,8 +383,8 @@ class SettingsPanel(QScrollArea):
             subject=self._meta_subject.text(),
             producer=self._meta_producer.text() or "Adobe PDF Library",
             creator=self._meta_creator.text() or "HP Scan",
-            creation_date=self._meta_creation_date.text(),
-            mod_date=self._meta_mod_date.text(),
+            creation_date=self._parse_date(self._meta_creation_date.text()),
+            mod_date=self._parse_date(self._meta_mod_date.text()),
         )
 
 
@@ -701,6 +716,8 @@ def launch() -> None:
     app.setOrganizationName("lookscanned")
     window = MainWindow()
     window.show()
+    window.raise_()
+    window.activateWindow()
     sys.exit(app.exec())
 
 

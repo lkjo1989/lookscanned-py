@@ -1,4 +1,3 @@
 @echo off
 cd /d "%~dp0"
-python -m lookscanned.gui
-pause
+start "" pythonw -m lookscanned.gui
